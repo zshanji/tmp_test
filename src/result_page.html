@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pXg</title>
+  <link href="./css/bootstrap.min.css" rel="stylesheet">
+  <link href="./css/bootstrap-icons.css" rel="stylesheet">
+
+  <script src="./js/bootstrap.bundle.min.js"></script>
+  <script src="./js/jquery-3.5.1.js"></script>
+  <script src="./js/plotly-3.1.0.min.js" charset="utf-8"></script>
+
+  <script src="./js/papaparse.min.js"></script>
+
+  <style>
+    .custom-file-upload input[type="file"] { display: none; }
+    .btn-teal {
+      background-color: #3CAEB7;
+      color: white;
+      border: none;
+      padding: 0.375rem 1rem;
+      font-size: 1rem;
+    }
+    .btn-teal:hover { background-color: #32979D; }
+    .btn-orange {
+      background-color: #F28C28;
+      color: white;
+      border: none;
+      padding: 0.375rem 1rem;
+      font-size: 1rem;
+    }
+    .btn-orange:hover { background-color: #d97820; }
+    .btn-gray {
+        background-color: #6c757d;  /* same gray tone */
+        color: white;
+        border: none;
+        padding: 0.375rem 1rem;
+        font-size: 1rem;
+      }
+    .btn-gray:hover {
+        background-color: #5c636a; /* slightly darker gray for hover */
+      }
+    .upload-box {
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem; 
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .section-heading {
+      border-left: 4px solid #3CAEB7;
+      padding-left: 0.75rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+    }
+    .equal-height {
+      height: 35px; /* form-control-sm과 동일 높이 */
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    .plot-box1 {
+      height: 50vh;   /* 원하는 높이 (px) */
+      width: 90%;
+    }
+
+    .plot-box2 {
+      height: 50vh;   /* 원하는 높이 (px) */
+      width: 32%;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg bg-light border-bottom">
+    <div class="container justify-content-between align-items-center py-1">
+      <a class="navbar-brand mx-auto" href="./index.html">
+        <img src="./icon/logo.svg" alt="Logo" height="60">
+      </a>
+      <div class="dropdown">
+        <button class="btn btn-secondary btn-lg d-flex align-items-center" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-list fs-4"></i>
+          <span class="visually-hidden">Toggle navigation</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end text-center" aria-labelledby="dropdownMenuButton">
+          <li><a class="dropdown-item" href="./index.html">Home</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="./execution.html">Launch pXg</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="https://github.com/HanyangBISLab/pXg" target="_blank">Github</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="https://doi.org/10.1016/j.mcpro.2024.100743" target="_blank">Publication</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+
+      <div class="row mt-4">
+        <div class="col-12">
+          <div id="resultDivContent">
+            <div id="plotContent" class="container text-center mt-4">
+              <div class="row justify-content-center mb-3">
+                <div class="col-md-3 mb-3 plot-box2" id="allPSMsPlot"></div>
+                <div class="col-md-3 mb-3 plot-box2" id="confidantPSMsPlot"></div>
+                <div class="col-md-3 mb-3 plot-box2" id="confidantSeqsPlot"></div>
+              </div>
+              <div class="row justify-content-center">
+                <div class="col-md-3 mb-3 plot-box1" id="lenPlot"></div>
+              </div>
+              <div class="row justify-content-center">
+                <div class="col-md-3 mb-3 plot-box1" id="categoryPlot"></div>
+              </div>
+            </div> 
+            <p></p>
+            <h5 class="section-heading" style="margin-top: 1rem;">Output Files</h5>
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover align-middle text-center">
+                  <thead class="table-light">
+                  <tr>
+                      <th>Name</th>
+                      <th>Description</th>
+                  </tr>
+                  </thead>
+                  <tbody>
+                  <tr>
+                      <td><a href="#" id="pxgLink" data-path="">pxg.pxg</a></td>
+                      <td>pXg output including all ranked target and decoy matches.</td>
+                  </tr>
+                  <tr>
+                      <td><a href="#" id="pinLink" data-path="">pXg.pxg.pin</a></td>
+                      <td>PIN-formatted pXg output including all ranked target and decoy matches.</td>
+                  </tr>
+                  <tr>
+                      <td><a href="#" id="fdrLink" data-path="">fdr.tsv</a></td>
+                      <td>pXg output containing top-ranked target and decoy matches with their Percolator scores and FDR pass status. This is the main file for downstream analyses.</td>
+                  </tr>
+                  <tr>
+                      <td><a href="#" id="logLink" data-path="">pxg.log</a></td>
+                      <td>pXg execution log.</td>
+                  </tr>
+                  <tr>
+                      <td><a href="#" id="perclogLink" data-path="">percolator.log</a></td>
+                      <td>Percolator execution log.</td>
+                  </tr>
+                  <tr>
+                      <td><a href="#" id="fdrlogLink" data-path="">fdr_control.log</a></td>
+                      <td>Log for FDR estimation.</td>
+                  </tr>
+                  
+                  </tbody>
+              </table>
+            </div>
+          </div>
+        </div> 
+      </div>
+  </div>
+</body>
+<script>
+  
+    $(function() {
+
+        getDownloadFile()
+        
+        renderPlots();
+
+    });
+
+    $('#resultDivContent table a').on('click', async function (e) {
+
+      e.preventDefault();
+      const p = $(this).data('path');       // data-path에서 실제 경로 읽기
+      if (!p) { alert('No path.'); return; }
+
+      const res = await window.resultDir.revealInFolder(p);
+      if (!res.ok) alert(`Error: ${res.msg}\nPath: ${res.path || p}`);
+
+    });
+
+
+    function getDownloadFile(){
+      // URL 파라미터 읽기
+      const params = new URLSearchParams(window.location.search);
+      const outputName = params.get("output"); 
+      const outputDir = params.get("outputDir"); 
+
+      // 각 파일명
+      const pxgName = `${outputName}.pxg`;
+      const logName = `${outputName}.pxg.log`;
+      const pinName = `${outputName}.pxg.pin`;
+      const fdrName = `${outputName}.fdr.tsv`;
+      const perclogName = `${outputName}.percolator.log`;
+      const fdrlogName = `${outputName}.fdr_control.log`;
+
+
+      // href는 file URL, download는 파일명만
+      const pxgHref = makeNativePath(outputDir, pxgName);
+      const logHref = makeNativePath(outputDir, logName);
+      const pinHref = makeNativePath(outputDir, pinName);
+      const fdrHref = makeNativePath(outputDir, fdrName);
+      const perclogHref = makeNativePath(outputDir, perclogName);
+      const fdrlogHref = makeNativePath(outputDir, fdrlogName);
+
+
+      const pxgLink = document.getElementById("pxgLink");
+      pxgLink.dataset.path = pxgHref; 
+      pxgLink.textContent = pxgName;
+      //pxgLink.download = pxgName;
+
+      const logLink = document.getElementById("logLink");
+      logLink.dataset.path = logHref; 
+      logLink.textContent = logName;
+      //logLink.download = logName;
+
+      const pinLink = document.getElementById("pinLink");
+      pinLink.dataset.path = pinHref;
+      pinLink.textContent = pinName;
+      //pinLink.download = pinName;
+
+      const fdrLink = document.getElementById("fdrLink");
+      fdrLink.dataset.path = fdrHref;
+      fdrLink.textContent = fdrName;
+      //fdrLink.download = fdrName;
+
+      const perclogLink = document.getElementById("perclogLink");
+      perclogLink.dataset.path = perclogHref;
+      perclogLink.textContent = perclogName;
+
+      const fdrlogLink = document.getElementById("fdrlogLink");
+      fdrlogLink.dataset.path = fdrlogHref;
+      fdrlogLink.textContent = fdrlogName;
+
+    }
+
+    function makeNativePath(dir, filename) {
+      const hasSlash = /[\/\\]$/.test(dir);
+      const sep = hasSlash ? '' : (dir.includes('\\') ? '\\' : '/');
+      return dir + sep + filename;
+    }
+
+    function parseTSV(text) {
+      const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.length > 0);
+      if (lines.length === 0) return { header: [], rows: [] };
+      const header = lines[0].split('\t');
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split('\t');
+        while (cols.length < header.length) cols.push('');
+        rows.push(cols);
+      }
+      return { header, rows };
+    }
+
+    async function renderPlots(){
+
+      const params = new URLSearchParams(window.location.search);
+      const outputName = params.get("output");
+      const outputDir =params.get("outputDir"); 
+      //const fullPath = outputDir.replace(/\/+$/, '') + '/' + output;
+      const opts = {
+        outputDir,
+        tsvPath: `${outputName}.fdr.tsv`
+      }
+      const { path, text } = await window.tsv.read(opts);
+      const parsed = parseTSV(text);
+
+      renderALLHistogram(parsed.header, parsed.rows, 'allPSMsPlot'); 
+      renderConfidentHistogram(parsed.header, parsed.rows, 'confidantPSMsPlot'); 
+      renderSeqHistogram(parsed.header, parsed.rows, 'confidantSeqsPlot');
+      renderLenHistogram(parsed.header, parsed.rows, 'lenPlot');
+      renderCategoryHistogram(parsed.header, parsed.rows, 'categoryPlot');
+    }
+
+
+    function renderALLHistogram(header, rows, elementId) {
+
+      const plotDiv = document.getElementById(elementId);
+      if (!plotDiv) return;
+
+      const idxLabel = header.indexOf('Label');
+      const idxIsRef  = header.indexOf('IsReference');
+      const idxFastaC = header.indexOf('FastaIDCount');
+
+      if (idxLabel === -1 || idxIsRef === -1 || idxFastaC === -1) {
+        plotDiv.innerHTML = `<div style="color:#c00;padding:8px;">
+          No columns(Label, IsReference, FastaIDCount).
+        </div>`;
+        return;
+      }
+
+      let c1=0, c2=0, c3=0, c4=0;
+
+      for (const r of rows) {
+        const label = toInt(r[idxLabel]);
+        const isRef = toBool(r[idxIsRef]);
+        const fastaCount = toInt(r[idxFastaC]);
+
+        // 4번은 label = -1 전체
+        if (label === -1) { c4++; continue; }
+
+        // label = 1 케이스들
+        if (label === 1) {
+          if (isRef && fastaCount > 0) c1++;
+          else if (!isRef && fastaCount > 0) c2++;
+          else if (!isRef && fastaCount === 0) c3++;
+          //else (isRef && fastaCount === 0) 
+        }
+      }
+
+      const tooltips = ['Peptides originating from protein<br> sequences without any mutations.',
+                        'Peptides originating from sequence<br> variants or non-coding regions.',
+                        'Non-reference peptides for which protein<br> evidence exists in the protein sequence database.','Decoy'];
+
+      const x = [
+        'Reference',
+        'Non-reference',
+        'Ambiguous',
+        'Decoy'
+      ];
+
+      const y = [c1, c3, c2, c4];
+
+      const trace = { x, y, type: 'bar', text: y.map(String), textposition: 'auto',
+                      marker: { color: ['#1f77b4','#2ca02c', '#ff7f0e', '#d62728'] },
+                      hovertext:tooltips,
+                      hovertemplate: '<i>%{x}</i>: %{hovertext}' + '<br>Count: %{y:,}<extra></extra>'};
+      const layout = {
+        title: {text:'All PSMs'},
+        ///height: heightPx,
+        //margin: { l: 40, r: 10, t: 40, b: 60 },
+        xaxis: { tickangle: -45 },
+        yaxis: {rangemode: 'tozero' , title: { text: 'Number of PSMs' }},
+        hovermode:'closest'
+      };
+
+     var myPlot = Plotly.newPlot(plotDiv, [trace], layout, { responsive: true });
+
+    }
+
+    function renderConfidentHistogram(header, rows, elementId) {
+
+      const plotDiv = document.getElementById(elementId);
+      if (!plotDiv) return;
+
+      const idxLabel = header.indexOf('Label');
+      const idxIsRef  = header.indexOf('IsReference');
+      const idxFastaC = header.indexOf('FastaIDCount');
+      const idxFilter = header.indexOf('FDRFilter');
+
+      if (idxLabel === -1 || idxIsRef === -1 || idxFastaC === -1 || idxFilter == -1) {
+        plotDiv.innerHTML = `<div style="color:#c00;padding:8px;">
+          No columns(Label, IsReference, FastaIDCount,FDRFilter).
+        </div>`;
+        return;
+      }
+
+      let c1=0, c2=0, c3=0
+
+      for (const r of rows) {
+        const label = toInt(r[idxLabel]);
+        const isRef = toBool(r[idxIsRef]);
+        const fastaCount = toInt(r[idxFastaC]);
+        const ifFiter = r[idxFilter]
+
+        // label = 1 케이스들
+        if (label === 1 && ifFiter == 'Pass') {
+          if (isRef && fastaCount > 0) c1++;
+          else if (!isRef && fastaCount > 0) c2++;
+          else if (!isRef && fastaCount === 0) c3++;
+          //else (isRef && fastaCount === 0) 
+        }
+      }
+
+      const tooltips = ['Peptides originating from protein<br> sequences without any mutations.',
+                        'Peptides originating from sequence<br> variants or non-coding regions.',
+                        'Non-reference peptides for which protein<br> evidence exists in the protein sequence database.'];
+
+      const x = [
+        'Reference',
+        'Non-reference',
+        'Ambiguous'
+      ];
+      const y = [c1, c3, c2];
+
+      const trace = { x, y, type: 'bar', text: y.map(String), textposition: 'auto' ,marker: { color: ['#1f77b4', '#2ca02c', '#ff7f0e'] },
+                      hovertext:tooltips,
+                      hovertemplate: '<i>%{x}</i>: %{hovertext}' + '<br>Count: %{y:,}<extra></extra>' };
+      const layout = {
+        title: {text:'Confident PSMs'},
+        ///height: heightPx,
+        //margin: { l: 40, r: 10, t: 40, b: 60 },
+        xaxis: { tickangle: -45 },
+        yaxis: {rangemode: 'tozero' , title: { text: 'Number of confident PSMs' }},
+        hovermode:'closest'
+      };
+
+      Plotly.newPlot(plotDiv, [trace], layout, { responsive: true });
+    }
+
+
+    function renderSeqHistogram(header, rows, elementId) {
+
+      const plotDiv = document.getElementById(elementId);
+      if (!plotDiv) return;
+
+      const idxLabel = header.indexOf('Label');
+      const idxIsRef  = header.indexOf('IsReference');
+      const idxFastaC = header.indexOf('FastaIDCount');
+      const idxSeq = header.indexOf('InferredSequence');
+      const idxFilter = header.indexOf('FDRFilter');
+
+      if (idxLabel === -1 || idxIsRef === -1 || idxFastaC === -1 || idxFilter == -1 || idxSeq == -1) {
+        plotDiv.innerHTML = `<div style="color:#c00;padding:8px;">
+          No columns(Label, IsReference, FastaIDCount, FDRFilter, InferredSequence)
+        </div>`;
+        return;
+      }
+
+      const seen = new Set();
+      const uniqueRows = [];
+      for (const r of rows) {
+        const seq = r[idxSeq] || '';
+        if (!seen.has(seq)) {
+          seen.add(seq);
+          uniqueRows.push(r);
+        }
+      }
+
+      let c1=0, c2=0, c3=0
+
+      for (const r of uniqueRows) {
+        const label = toInt(r[idxLabel]);
+        const isRef = toBool(r[idxIsRef]);
+        const fastaCount = toInt(r[idxFastaC]);
+        const ifFilter = r[idxFilter]
+
+        // label = 1 케이스들
+        if (label === 1 && ifFilter == 'Pass') {
+        if (isRef && fastaCount > 0) c1++;
+        else if (!isRef && fastaCount > 0) c2++;
+        else if (!isRef && fastaCount === 0) c3++;
+        // (isRef && fastaCount === 0) 은 명세에 없음
+        }
+      }
+
+      const x = [
+        'Reference',
+        'Non-reference',
+        'Ambiguous'
+      ];
+      const y = [c1, c3, c2];
+
+      const tooltips = ['Peptides originating from protein<br> sequences without any mutations.',
+                        'Peptides originating from sequence<br> variants or non-coding regions.',
+                        'Non-reference peptides for which protein<br> evidence exists in the protein sequence database.'];
+
+      const trace = { x, y, type: 'bar', text: y.map(String), textposition: 'auto' , marker: { color: ['#1f77b4', '#2ca02c','#ff7f0e'] },
+                      hovertext:tooltips,
+                      hovertemplate: '<i>%{x}</i>: %{hovertext}' + '<br>Count: %{y:,}<extra></extra>' };
+      const layout = {
+        title: {text:'Confident peptides'},
+        ///height: heightPx,
+        //margin: { l: 40, r: 10, t: 40, b: 60 },
+        xaxis: { tickangle: -45 },
+        yaxis: {rangemode: 'tozero' , title: { text: 'Number of confident peptides' }},
+        hovermode:'closest'
+      };
+
+      Plotly.newPlot(plotDiv, [trace], layout, { responsive: true });
+    }
+
+    function renderLenHistogram(header, rows, elementId) {
+
+      const plotDiv = document.getElementById(elementId);
+      if (!plotDiv) return;
+
+      const idxLabel = header.indexOf('Label');
+      const idxIsRef  = header.indexOf('IsReference');
+      const idxFastaC = header.indexOf('FastaIDCount');
+      const idxSeq = header.indexOf('InferredSequence');
+      const idxFilter = header.indexOf('FDRFilter');
+      const idxLen = header.indexOf('PeptideLength');
+
+      if (idxLabel === -1 || idxIsRef === -1 || idxFastaC === -1 || idxFilter == -1 || idxSeq == -1 || idxLen ==-1) {
+        plotDiv.innerHTML = `<div style="color:#c00;padding:8px;">
+          No columns(Label, IsReference, FastaIDCount, FDRFilter, InferredSequence, PeptideLength).
+        </div>`;
+        return;
+      }
+
+      // 카테고리별 수집 함수 (카테고리 내부에서 InferredSequence 중복 제거)
+      function collect(fnPredicate) {
+        const seenSeq = new Set();
+        const values = [];
+        for (const r of rows) {
+          const seq = r[idxSeq] || '';
+          if (seenSeq.has(seq)) continue;
+          if (fnPredicate(r)) {
+            const len = toInt(r[idxLen]);
+            if (!Number.isNaN(len)) {
+              seenSeq.add(seq);
+              values.push(len);
+            }
+          }
+        }
+        return values;
+      }
+
+      // 조건 정의
+      const isPass = (r) => String(r[idxFilter]) === 'Pass';
+      const A = collect(r => isPass(r) && toInt(r[idxLabel])===1 && toBool(r[idxIsRef])===true  && toInt(r[idxFastaC])>0);
+      const B = collect(r => isPass(r) && toInt(r[idxLabel])===1 && toBool(r[idxIsRef])===false && toInt(r[idxFastaC])>0);
+      const C = collect(r => isPass(r) && toInt(r[idxLabel])===1 && toBool(r[idxIsRef])===false && toInt(r[idxFastaC])===0);
+      const D = collect(r => toInt(r[idxLabel])===-1 ); // FDR 필터 없음
+
+      // 8~15 길이만 카운트
+      const x = Array.from({length:8}, (_,i)=>i+8); // [8,9,...,15]
+      function countLen(arr) {
+        const counts = new Array(8).fill(0);
+        for (const l of arr) {
+          if (l>=8 && l<=15) counts[l-8]++;
+        }
+        return counts;
+      }
+
+
+      const y1 = countLen(A);
+      const y2 = countLen(B);
+      const y3 = countLen(C);
+      const y4 = countLen(D);
+
+
+      // 그룹별 비율 변환 함수
+      function toGroupProportion(arr) {
+        if (!Array.isArray(arr) || arr.length === 0) return arr.map(() => 0);
+        const total = arr.reduce((a, b) => a + b, 0);
+        if (total === 0) return arr.map(() => 0);
+        return arr.map(v => Number((v / total).toFixed(2)));
+      }
+
+      const trac1 = { x, y: toGroupProportion(y1), type:'bar', name:"Reference",
+        text: y1.map(String), textposition:'auto', 
+        hovertemplate: 'Proportion: %{y}<br>Count: %{text}<extra></extra>',
+        marker:{color:'#1f77b4'}};
+
+      const trac2 = { x, y: toGroupProportion(y2), type:'bar', name:"Ambiguous",
+        text: y2.map(String), textposition:'auto', 
+        hovertemplate: 'Proportion: %{y}<br>Count: %{text}<extra></extra>',
+        marker:{color:'#ff7f0e'}};
+
+      const trac3 = { x, y: toGroupProportion(y3), type:'bar', name:"Non-reference",
+        text: y3.map(String), textposition:'auto',
+        hovertemplate: 'Proportion: %{y}<br>Count: %{text}<extra></extra>',
+        marker:{color:'#2ca02c'}};
+
+      const trac4 = { x, y: toGroupProportion(y4), type:'bar', name:"Decoy",
+        text: y4.map(String), textposition:'auto', 
+        hovertemplate: 'Proportion: %{y}<br>Count: %{text}<extra></extra>',
+        marker:{color:'#d62728'}};
+
+      const data = [trac1, trac3,trac2, trac4];
+
+      const layout = {
+        title: {
+          text: 'Peptide length distribution',
+          y: 0.97  // 타이틀을 살짝 위로 올리기 (0~1 사이, 1=최상단)
+        },
+        margin: { l:50, r:10, t:80, b:60 }, // top margin 늘려주기
+        xaxis: { 
+          title: { text: 'Peptide length' }
+        },
+        yaxis: { 
+          title: { text: 'Length proportion' }, 
+          rangemode:'tozero' 
+        },
+        legend: { 
+          orientation: 'h',  // 가로로 배치
+          x: 0.5,            // 가운데 정렬
+          y: 1,           // 타이틀 위로 올리기
+          xanchor: 'center', 
+          yanchor: 'bottom' 
+        },
+        bargap: 0.5       
+        //bargroupgap: 
+      };
+      Plotly.newPlot(plotDiv, data, layout, { responsive: true });
+    }
+
+    function renderCategoryHistogram(header, rows, elementId) {
+      const plotDiv = document.getElementById(elementId);
+      if (!plotDiv) return;
+
+      const idxLabel  = header.indexOf('Label');
+      const idxIsRef  = header.indexOf('IsReference');
+      const idxSeq    = header.indexOf('InferredSequence');
+      const idxFilter = header.indexOf('FDRFilter');
+      const idxEvents = header.indexOf('Events');
+      const idxAAV    = header.indexOf('AminoAcidVariant');
+      const idxFastaC = header.indexOf('FastaIDCount');
+
+      if ([idxLabel, idxIsRef, idxSeq, idxFilter, idxEvents, idxAAV, idxFastaC].some(i => i === -1)) {
+        plotDiv.innerHTML = `<div style="color:#c00;padding:8px;">
+          No columns(Label, IsReference, FDRFilter, InferredSequence, Events, AminoAcidVariant, FastaIDCount)
+        </div>`;
+        return;
+      }
+
+      const seenSeq = new Set();  
+      const counter = {};
+
+      for (const r of rows) {
+        const seq     = String(r[idxSeq] ?? '').trim();
+        if (!seq || seenSeq.has(seq)) continue;  // 같은 InferredSequence는 한 번만 카운트
+        seenSeq.add(seq);
+
+        const label   = toInt(r[idxLabel]);
+        const filter  = String(r[idxFilter] ?? '').trim().toLowerCase();
+        const isRef   = String(r[idxIsRef] ?? '').trim().toLowerCase() === 'true';
+        const events  = String(r[idxEvents] ?? '').trim();
+        const aav     = String(r[idxAAV] ?? '').trim();
+        const fastaC   = toInt(r[idxFastaC]);
+
+        // non-reference + FDR Pass + Label==1 인 경우만 집계
+        if (label !== 1) continue;
+        if (filter !== 'pass') continue;
+        if (isRef) continue;
+        if (fastaC > 0) continue;
+
+        let key;
+        if (aav && aav !== '-') {
+          key = 'SAAV';
+        } else if (events.includes('|')) {
+          key = 'Multiple';
+        } else if (events.includes('AS')) {
+          key = 'AS';
+        } else if (events.toLowerCase().includes('unknown') || !events) {
+          key = 'Unknown';
+        } else {
+          key = events;
+        }
+
+        counter[key] = (counter[key] || 0) + 1;
+      }
+
+      const entries = Object.entries(counter).sort((a, b) => b[1] - a[1]);
+
+      const x = entries.map(([k]) => k);
+      const y = entries.map(([_, v]) => v);
+
+      // 설명 사전
+      const descriptions = {
+        'FS': 'Frameshift',
+        'AS': 'Alternative splicing',
+        'SAAV': 'Single amino acid variant',
+        'Multiple': 'Multiple events',
+        "Unknown":"Unknown",
+        "PC":"Protein coding",
+        "3`-UTR":"3`-untranslated region",
+        "5`-UTR":"5`-untranslated region",
+        "asRNA":"Antisense RNA",
+        "IGR":"Intergenic region",
+        "IR":"Intron region",
+        "ncRNA":"Non-coding RNA"
+      };
+
+      const hovertext = x.map(label => descriptions[label] || 'Other');
+
+      const trace = {
+        x, y,
+        type: 'bar',
+        text: y.map(String),
+        textposition: 'auto',
+        marker: { color: '#bebebe' },
+        hovertext:hovertext,
+        hovertemplate: '<i>%{x}</i>: %{hovertext}' + '<br>Count: %{y:,}<extra></extra>'
+        //name: 'FS: Frame shift <br>Multiple: Multiple Events <br>AS: Alternative Splicing <br>SAAV: Single Amino Acid Variant' 
+      };
+
+      const layout = {
+        title: { text: 'Category of non-reference peptides' },
+        //margin: { l: 50, r: 160, t: 60, b: 60 },
+        xaxis: { tickangle: -45 },
+        yaxis: { 
+          title: { text: 'Number of peptides' }, 
+          rangemode:'tozero' 
+        },
+        hovermode:'closest'
+        /*showlegend: true, 
+        legend: { 
+          orientation: 'v',  
+          x: 1.05,            
+          y: 1,               
+          xanchor: 'left',   
+          yanchor: 'center'   
+        },*/
+      };
+
+      Plotly.newPlot(plotDiv, [trace], layout, { responsive: true });
+    }
+
+
+    function toBool(v) {
+      if (typeof v === 'boolean') return v;
+      const s = String(v).trim().toLowerCase();
+      return s === 'true' || s === 't' || s === '1' || s === 'yes' || s === 'y';
+    }
+    function toInt(v) {
+      const n = parseInt(String(v).trim(), 10);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+</script>
+</html>
